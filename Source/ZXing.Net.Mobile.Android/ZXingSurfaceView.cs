@@ -272,75 +272,89 @@ namespace ZXing.Mobile
                 return;
 
             wasScanned = false;
+            try
+            {
+                var cameraParameters = camera.GetParameters();
+                var width = cameraParameters.PreviewSize.Width;
+                var height = cameraParameters.PreviewSize.Height;
+                //var img = new YuvImage(bytes, ImageFormatType.Nv21, cameraParameters.PreviewSize.Width, cameraParameters.PreviewSize.Height, null);	
+                lastPreviewAnalysis = DateTime.UtcNow;
 
-            var cameraParameters = camera.GetParameters ();
-            var width = cameraParameters.PreviewSize.Width;
-            var height = cameraParameters.PreviewSize.Height;
-            //var img = new YuvImage(bytes, ImageFormatType.Nv21, cameraParameters.PreviewSize.Width, cameraParameters.PreviewSize.Height, null);	
-            lastPreviewAnalysis = DateTime.UtcNow;
+                processingTask = Task.Factory.StartNew(() =>
+                {
+                    try
+                    {
 
-            processingTask = Task.Factory.StartNew (() => {
-                try {
+                        if (barcodeReader == null)
+                        {
+                            barcodeReader = new BarcodeReader(null, null, null, (p, w, h, f) =>
+                                new PlanarYUVLuminanceSource(p, w, h, 0, 0, w, h, false));
+                            //new PlanarYUVLuminanceSource(p, w, h, dataRect.Left, dataRect.Top, dataRect.Width(), dataRect.Height(), false))
 
-                    if (barcodeReader == null) {
-                        barcodeReader = new BarcodeReader (null, null, null, (p, w, h, f) => 
-                                              new PlanarYUVLuminanceSource (p, w, h, 0, 0, w, h, false));
-                        //new PlanarYUVLuminanceSource(p, w, h, dataRect.Left, dataRect.Top, dataRect.Width(), dataRect.Height(), false))
+                            if (this.scanningOptions.TryHarder.HasValue)
+                                barcodeReader.Options.TryHarder = this.scanningOptions.TryHarder.Value;
+                            if (this.scanningOptions.PureBarcode.HasValue)
+                                barcodeReader.Options.PureBarcode = this.scanningOptions.PureBarcode.Value;
+                            if (!string.IsNullOrEmpty(this.scanningOptions.CharacterSet))
+                                barcodeReader.Options.CharacterSet = this.scanningOptions.CharacterSet;
+                            if (this.scanningOptions.TryInverted.HasValue)
+                                barcodeReader.TryInverted = this.scanningOptions.TryInverted.Value;
 
-                        if (this.scanningOptions.TryHarder.HasValue)
-                            barcodeReader.Options.TryHarder = this.scanningOptions.TryHarder.Value;
-                        if (this.scanningOptions.PureBarcode.HasValue)
-                            barcodeReader.Options.PureBarcode = this.scanningOptions.PureBarcode.Value;
-                        if (!string.IsNullOrEmpty (this.scanningOptions.CharacterSet))
-                            barcodeReader.Options.CharacterSet = this.scanningOptions.CharacterSet;
-                        if (this.scanningOptions.TryInverted.HasValue)
-                            barcodeReader.TryInverted = this.scanningOptions.TryInverted.Value;
+                            if (this.scanningOptions.PossibleFormats != null && this.scanningOptions.PossibleFormats.Count > 0)
+                            {
+                                barcodeReader.Options.PossibleFormats = new List<BarcodeFormat>();
 
-                        if (this.scanningOptions.PossibleFormats != null && this.scanningOptions.PossibleFormats.Count > 0) {
-                            barcodeReader.Options.PossibleFormats = new List<BarcodeFormat> ();
-
-                            foreach (var pf in this.scanningOptions.PossibleFormats)
-                                barcodeReader.Options.PossibleFormats.Add (pf);
+                                foreach (var pf in this.scanningOptions.PossibleFormats)
+                                    barcodeReader.Options.PossibleFormats.Add(pf);
+                            }
                         }
+
+                        bool rotate = false;
+                        int newWidth = width;
+                        int newHeight = height;
+
+                        var cDegrees = getCameraDisplayOrientation(this.activity);
+
+                        if (cDegrees == 90 || cDegrees == 270)
+                        {
+                            rotate = true;
+                            newWidth = height;
+                            newHeight = width;
+                        }
+
+                        var start = PerformanceCounter.Start();
+
+                        if (rotate)
+                            bytes = rotateCounterClockwise(bytes, width, height);
+
+                        var result = barcodeReader.Decode(bytes, newWidth, newHeight, RGBLuminanceSource.BitmapFormat.Unknown);
+
+                        PerformanceCounter.Stop(start, "Decode Time: {0} ms (width: " + width + ", height: " + height + ", degrees: " + cDegrees + ", rotate: " + rotate + ")");
+
+                        if (result == null || string.IsNullOrEmpty(result.Text))
+                            return;
+
+                        Android.Util.Log.Debug(MobileBarcodeScanner.TAG, "Barcode Found: " + result.Text);
+
+                        wasScanned = true;
+                        callback(result);
                     }
-
-                    bool rotate = false;
-                    int newWidth = width;
-                    int newHeight = height;
-
-                    var cDegrees = getCameraDisplayOrientation (this.activity);
-
-                    if (cDegrees == 90 || cDegrees == 270) {
-                        rotate = true;
-                        newWidth = height;
-                        newHeight = width;
+                    catch (ReaderException)
+                    {
+                        Android.Util.Log.Debug(MobileBarcodeScanner.TAG, "No barcode Found");
+                        // ignore this exception; it happens every time there is a failed scan
                     }
-
-                    var start = PerformanceCounter.Start ();
-
-                    if (rotate)
-                        bytes = rotateCounterClockwise (bytes, width, height);
-
-                    var result = barcodeReader.Decode (bytes, newWidth, newHeight, RGBLuminanceSource.BitmapFormat.Unknown);
-
-                    PerformanceCounter.Stop (start, "Decode Time: {0} ms (width: " + width + ", height: " + height + ", degrees: " + cDegrees + ", rotate: " + rotate + ")");
-
-                    if (result == null || string.IsNullOrEmpty (result.Text))
-                        return;
-
-                    Android.Util.Log.Debug (MobileBarcodeScanner.TAG, "Barcode Found: " + result.Text);
-
-                    wasScanned = true;
-                    callback (result);
-                } catch (ReaderException) {
-                    Android.Util.Log.Debug (MobileBarcodeScanner.TAG, "No barcode Found");
-                    // ignore this exception; it happens every time there is a failed scan
-                } catch (Exception) {
-                    // TODO: this one is unexpected.. log or otherwise handle it
-                    throw;
-                }
-
-            });
+                    catch (Exception)
+                    {
+                        // TODO: this one is unexpected.. log or otherwise handle it
+                        throw;
+                    }
+                });
+            }
+            catch
+            {
+                //Ignore frame. This can happen as getParameters of camera sometimes throws an exception, maybe due to a bug in Xamarin mono implementation...
+            }
         }
 
 
