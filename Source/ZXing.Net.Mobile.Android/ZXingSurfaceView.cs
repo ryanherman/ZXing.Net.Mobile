@@ -138,8 +138,11 @@ namespace ZXing.Mobile
                     Android.Util.Log.Debug (MobileBarcodeScanner.TAG, "Camera is null :(");
 
                 camera.SetPreviewCallback (this);
+                this.hasTorch = null;
+                this.CameraChanged?.Invoke(this, EventArgs.Empty);
 
-            } catch (Exception ex) {
+            }
+            catch (Exception ex) {
                 ShutdownCamera ();
 
                 Console.WriteLine ("Setup Error: " + ex);
@@ -240,6 +243,7 @@ namespace ZXing.Mobile
                 theCamera.SetPreviewCallback (null);
                 theCamera.StopPreview ();
                 theCamera.Release ();
+                this.CameraChanged?.Invoke(this, EventArgs.Empty);
             }
             ReleaseExclusiveAccess ();
         }
@@ -460,6 +464,7 @@ namespace ZXing.Mobile
                             Android.Util.Log.Error (MobileBarcodeScanner.TAG, ex.ToString ());
                         }
                         theCamera.Release ();
+                        this.CameraChanged?.Invoke(this,EventArgs.Empty);
                     }
                 } catch (Exception e) {
                     Android.Util.Log.Error (MobileBarcodeScanner.TAG, e.ToString ());
@@ -590,8 +595,11 @@ namespace ZXing.Mobile
         public bool HasTorch {
             get {
                 if (hasTorch.HasValue)
-                    return hasTorch.Value;  
-                
+                    return hasTorch.Value;
+                if (this.camera == null)
+                {
+                    return false;
+                }
                 var p = camera.GetParameters ();
                 var supportedFlashModes = p.SupportedFlashModes;
 
@@ -679,5 +687,7 @@ namespace ZXing.Mobile
         //            canvas.DrawLine (a.X, a.Y, b.X, b.Y, paint);
         //        }
         #endregion
+
+        public event EventHandler<EventArgs> CameraChanged;
     }
 }

@@ -61,15 +61,26 @@ namespace ZXing.Net.Mobile.Forms.Android
                 zxingSurface.LayoutParameters = new LayoutParams (LayoutParams.MatchParent, LayoutParams.MatchParent);
 
                 base.SetNativeControl (zxingSurface);
+                this.Control.CameraChanged += Control_CameraChanged;
 
                 if (formsView.IsScanning)
+                {
                     zxingSurface.StartScanning(formsView.RaiseScanResult, formsView.Options);
+                }
 
                 if (!formsView.IsAnalyzing)
                     zxingSurface.PauseAnalysis ();
 
                 if (formsView.IsTorchOn)
                     zxingSurface.Torch (true);
+            }
+        }
+
+        private void Control_CameraChanged(object sender, EventArgs e)
+        {
+            if (this.Element != null && this.zxingSurface != null)
+            {
+                this.Element.HasTorch = this.zxingSurface.HasTorch;
             }
         }
 
@@ -85,11 +96,13 @@ namespace ZXing.Net.Mobile.Forms.Android
                 zxingSurface.Torch (formsView.IsTorchOn);
                 break;
             case nameof (ZXingScannerView.IsScanning):
-                if (formsView.IsScanning)
-                    zxingSurface.StartScanning (formsView.RaiseScanResult, formsView.Options);
-                else
-                    zxingSurface.StopScanning ();
-                break;
+                    if (formsView.IsScanning)
+                    {
+                        zxingSurface.StartScanning(formsView.RaiseScanResult, formsView.Options);
+                    }
+                    else
+                        zxingSurface.StopScanning();
+                    break;
             case nameof (ZXingScannerView.IsAnalyzing):
                 if (formsView.IsAnalyzing)
                     zxingSurface.ResumeAnalysis ();

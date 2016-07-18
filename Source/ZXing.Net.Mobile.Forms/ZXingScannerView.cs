@@ -70,8 +70,10 @@ namespace ZXing.Net.Mobile.Forms
 
         public static readonly BindableProperty HasTorchProperty =
             BindableProperty.Create<ZXingScannerView, bool> (p => p.HasTorch, false);
-        public bool HasTorch {
+        public bool HasTorch
+        {
             get { return (bool)GetValue (HasTorchProperty); }
+            set { SetValue(ZXingScannerView.HasTorchProperty, value); }
         }
 
 
