@@ -594,7 +594,7 @@ namespace ZXing.Mobile
 
         public bool HasTorch {
             get {
-                if (hasTorch.HasValue)
+                if (hasTorch == true)
                     return hasTorch.Value;
                 if (this.camera == null)
                 {
@@ -608,7 +608,7 @@ namespace ZXing.Mobile
                     || supportedFlashModes.Contains (Camera.Parameters.FlashModeOn)))
                     hasTorch = CheckTorchPermissions (false);
 
-                return hasTorch.Value;
+                return hasTorch == true;
             }
         }
 
