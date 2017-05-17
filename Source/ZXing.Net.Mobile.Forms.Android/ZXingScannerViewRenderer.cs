@@ -29,9 +29,9 @@ namespace ZXing.Net.Mobile.Forms.Android
             var temp = DateTime.Now;
         }
 
-        ZXingScannerView formsView;
+        protected ZXingScannerView formsView;
 
-        internal ZXingSurfaceView zxingSurface;
+        protected ZXingSurfaceView zxingSurface;
         internal Task<bool> requestPermissionsTask;
 
         protected override async void OnElementChanged(ElementChangedEventArgs<ZXingScannerView> e)
@@ -55,13 +55,12 @@ namespace ZXing.Net.Mobile.Forms.Android
                 var activity = Context as Activity;
 
                 if (activity != null)                
-                    await PermissionsHandler.RequestPermissions (activity);
+                    await ZXing.Net.Mobile.Android.PermissionsHandler.RequestPermissionsAsync (activity);
                 
                 zxingSurface = new ZXingSurfaceView (Xamarin.Forms.Forms.Context as Activity, formsView.Options);
                 zxingSurface.LayoutParameters = new LayoutParams (LayoutParams.MatchParent, LayoutParams.MatchParent);
 
                 base.SetNativeControl (zxingSurface);
-                this.Control.CameraChanged += Control_CameraChanged;
 
                 if (formsView.IsScanning)
                 {
@@ -76,13 +75,6 @@ namespace ZXing.Net.Mobile.Forms.Android
             }
         }
 
-        private void Control_CameraChanged(object sender, EventArgs e)
-        {
-            if (this.Element != null && this.zxingSurface != null)
-            {
-                this.Element.HasTorch = this.zxingSurface.HasTorch;
-            }
-        }
 
         protected override void OnElementPropertyChanged (object sender, PropertyChangedEventArgs e)
         {
@@ -118,7 +110,7 @@ namespace ZXing.Net.Mobile.Forms.Android
             var y = e.GetY ();
 
             if (zxingSurface != null) {
-                zxingSurface.AutoFocus ();
+                zxingSurface.AutoFocus ((int)x, (int)y);
                 System.Diagnostics.Debug.WriteLine ("Touch: x={0}, y={1}", x, y);
             }
             return base.OnTouchEvent (e);

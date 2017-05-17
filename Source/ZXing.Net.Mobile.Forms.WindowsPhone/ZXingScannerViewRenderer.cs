@@ -17,15 +17,15 @@ namespace ZXing.Net.Mobile.Forms.WindowsPhone
             // Force the assembly to load
         }
 
-        ZXingScannerView formsView;
+        protected ZXingScannerView formsView;
 
-        ZXing.Mobile.ZXingScannerControl zxingControl;
+        protected ZXing.Mobile.ZXingScannerControl zxingControl;
 
         protected override void OnElementChanged(ElementChangedEventArgs<ZXingScannerView> e)
         {
             formsView = Element;
 
-            if (zxingControl == null)
+            if (formsView != null && zxingControl == null)
             {
                 formsView.AutoFocusRequested += FormsView_AutoFocusRequested;
 
@@ -43,6 +43,11 @@ namespace ZXing.Net.Mobile.Forms.WindowsPhone
 
                 if (formsView.IsTorchOn)
                     zxingControl.Torch(formsView.IsTorchOn);
+            }
+
+            if (formsView == null && e.NewElement == null && zxingControl != null)
+            {
+                zxingControl.StopScanning();
             }
 
             base.OnElementChanged(e);
